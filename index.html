@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WebAuthn Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      text-align: center;
+    }
+
+    #main-content {
+      margin-top: 40px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>WebAuthn Login</h1>
+  <div id="main-content">
+    <p>Click the button below to authenticate with your registered key.</p>
+    <button id="authBtn">Authenticate</button>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    // Simulated existing credential ID (Base64url-decoded Uint8Array)
+    // You normally fetch this dynamically from your server
+    const storedCredentialId = Uint8Array.from(
+      atob('Base64EncodedCredentialID=='), // Replace with real Base64 ID
+      c => c.charCodeAt(0)
+    );
+
+    // Simulated mapping of credentials to names
+    const credentialNames = {
+      "Base64EncodedCredentialID==": "Markus's Key"
+    };
+
+    document.getElementById('authBtn').addEventListener('click', async () => {
+      const status = document.getElementById('status');
+      status.textContent = "Authenticating...";
+
+      try {
+        const assertion = await navigator.credentials.get({
+          publicKey: {
+            challenge: Uint8Array.from(window.crypto.getRandomValues(new Uint8Array(32))),
+            timeout: 60000,
+            allowCredentials: [{
+              id: storedCredentialId,
+              type: "public-key",
+              transports: ["usb", "ble", "nfc", "internal"]
+            }],
+            userVerification: "preferred"
+          }
+        });
+
+        const keyIdBase64 = btoa(String.fromCharCode(...new Uint8Array(assertion.rawId)));
+
+        // Look up friendly name
+        const keyName = credentialNames[keyIdBase64] || "Unknown Key";
+
+        // Change page content
+        const content = document.getElementById('main-content');
+        content.innerHTML = `<h2>Hello, ${keyName}!</h2>`;
+      } catch (err) {
+        console.error("Authentication failed", err);
+        status.textContent = "Authentication failed: " + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
